@@ -1,10 +1,10 @@
 {
   "schema": 1,
   "sourceRepository": "rkhnorkhan-bit/VPS-Control-centre",
-  "sourceRunId": 36319240749,
-  "sourceCommit": "bdfbc3e6e162f8bc59d53ba3d01a4980e073836a",
-  "version": "0.5.1-test.1",
+  "sourceRunId": 36321039109,
+  "sourceCommit": "037046ffc02c79f5ea6f77566f81155ce4fe7fa0",
+  "version": "0.5.1-test.2",
   "channel": "test",
   "enabled": true,
-  "note": "First user-visible in-app Test-channel update from installed 0.5.0-bootstrap.2. Includes safe legacy FULL-backup bridge."
+  "note": "Compatibility hotfix: first legacy bootstrap package uses minProductVersion 0.1.0 for old .2 Core AssemblyVersion gate; new runtime permanently validates against VCC ProductVersion."
 }
