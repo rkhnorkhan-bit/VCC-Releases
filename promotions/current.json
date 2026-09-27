@@ -1,10 +1,10 @@
 {
   "schema": 1,
   "sourceRepository": "rkhnorkhan-bit/VPS-Control-centre",
-  "sourceRunId": 0,
-  "sourceCommit": "0000000000000000000000000000000000000000",
-  "version": "0.0.0-placeholder",
+  "sourceRunId": 36317451248,
+  "sourceCommit": "10d7d4408c5a4be39008092e4112d16335852660",
+  "version": "0.5.0-bootstrap.4",
   "channel": "test",
-  "enabled": false,
-  "note": "Inert descriptor used to smoke-test the public promotion workflow; no release is authorized."
+  "enabled": true,
+  "note": "Owner-authorized first live Test-channel safe-update promotion after FULL-backup approval."
 }
