@@ -1,10 +1,10 @@
 {
   "schema": 1,
   "sourceRepository": "rkhnorkhan-bit/VPS-Control-centre",
-  "sourceRunId": 36327796883,
-  "sourceCommit": "5eb54cf9a6ec16872b1e58812813c67a121058f4",
-  "version": "0.6.0-test.1",
+  "sourceRunId": 36348854989,
+  "sourceCommit": "7513b0b005cee9597429a48d7c1bdde3892578da",
+  "version": "0.6.1-test.2",
   "channel": "test",
   "enabled": true,
-  "note": "U003.1 server editor/environment + U003.2 Live Monitoring/latency/RX-TX/aggregates. Exact private CI PASS."
+  "note": "U003 owner-fix Test promotion. Exact private CI PASS for 0.6.1-test.2: UX polish after 0.6.1-test.1 acceptance findings."
 }
