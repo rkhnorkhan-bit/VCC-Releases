@@ -37,6 +37,12 @@ jobs:
           x = json.loads(p.read_text(encoding="utf-8"))
           if x.get("schema") != 1:
               raise SystemExit("Unsupported promotion schema")
+          enabled = bool(x.get("enabled", True))
+          with open("$GITHUB_OUTPUT", "a", encoding="utf-8") as out:
+              print(f"enabled={str(enabled).lower()}", file=out)
+          if not enabled:
+              print("Promotion descriptor is inert; nothing will be published.")
+              raise SystemExit(0)
           if x.get("sourceRepository") != "rkhnorkhan-bit/VPS-Control-centre":
               raise SystemExit("Unexpected source repository")
           if not isinstance(x.get("sourceRunId"), int) or x["sourceRunId"] <= 0:
@@ -52,6 +58,7 @@ jobs:
                   print(f"{key}={x[key]}", file=out)
 
       - name: Verify successful private Windows CI and download exact artifact
+        if: ${{ steps.promotion.outputs.enabled == 'true' }}
         env:
           GH_TOKEN: ${{ secrets.VCC_SOURCE_ARTIFACTS_TOKEN }}
           SOURCE_REPO: ${{ steps.promotion.outputs.sourceRepository }}
@@ -77,6 +84,7 @@ jobs:
           gh run download "$SOURCE_RUN_ID" -R "$SOURCE_REPO" -n "$artifact_name" -D staging
 
       - name: Verify release provenance and package bytes
+        if: ${{ steps.promotion.outputs.enabled == 'true' }}
         env:
           VERSION: ${{ steps.promotion.outputs.version }}
           CHANNEL: ${{ steps.promotion.outputs.channel }}
@@ -130,6 +138,7 @@ jobs:
           print("PUBLIC PROMOTION GATE PASS")
 
       - name: Create immutable public Release
+        if: ${{ steps.promotion.outputs.enabled == 'true' }}
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ steps.promotion.outputs.version }}
