@@ -1,10 +1,10 @@
 {
   "schema": 1,
   "sourceRepository": "rkhnorkhan-bit/VPS-Control-centre",
-  "sourceRunId": 36321039109,
-  "sourceCommit": "037046ffc02c79f5ea6f77566f81155ce4fe7fa0",
-  "version": "0.5.1-test.2",
+  "sourceRunId": 36327796883,
+  "sourceCommit": "5eb54cf9a6ec16872b1e58812813c67a121058f4",
+  "version": "0.6.0-test.1",
   "channel": "test",
   "enabled": true,
-  "note": "Compatibility hotfix: first legacy bootstrap package uses minProductVersion 0.1.0 for old .2 Core AssemblyVersion gate; new runtime permanently validates against VCC ProductVersion."
+  "note": "U003.1 server editor/environment + U003.2 Live Monitoring/latency/RX-TX/aggregates. Exact private CI PASS."
 }
