@@ -6,5 +6,6 @@
   "version": "0.5.0-bootstrap.4",
   "channel": "test",
   "enabled": true,
-  "note": "Owner-authorized first live Test-channel safe-update promotion after FULL-backup approval."
+  "note": "Retry authorized Test promotion after fixing GitHub Actions output propagation; source run/commit/version unchanged.",
+  "promotionAttempt": 2
 }
