@@ -1,0 +1,177 @@
+name: Publish verified VCC candidate
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'promotions/current.json'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: vcc-public-release-promotion
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Verify private CI artifact and create GitHub Release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout public release-control metadata
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Validate promotion request
+        id: promotion
+        shell: python
+        run: |
+          import json, pathlib, re
+          p = pathlib.Path("promotions/current.json")
+          if not p.is_file():
+              raise SystemExit("promotions/current.json is missing")
+          x = json.loads(p.read_text(encoding="utf-8"))
+          if x.get("schema") != 1:
+              raise SystemExit("Unsupported promotion schema")
+          if x.get("sourceRepository") != "rkhnorkhan-bit/VPS-Control-centre":
+              raise SystemExit("Unexpected source repository")
+          if not isinstance(x.get("sourceRunId"), int) or x["sourceRunId"] <= 0:
+              raise SystemExit("Invalid sourceRunId")
+          if not re.fullmatch(r"[0-9a-f]{40}", str(x.get("sourceCommit", ""))):
+              raise SystemExit("Invalid sourceCommit")
+          if not re.fullmatch(r"\d+\.\d+\.\d+(?:-[A-Za-z0-9.-]+)?", str(x.get("version", ""))):
+              raise SystemExit("Invalid version")
+          if x.get("channel") not in ("test", "stable"):
+              raise SystemExit("Invalid channel")
+          with open("$GITHUB_OUTPUT", "a", encoding="utf-8") as out:
+              for key in ("sourceRepository", "sourceRunId", "sourceCommit", "version", "channel"):
+                  print(f"{key}={x[key]}", file=out)
+
+      - name: Verify successful private Windows CI and download exact artifact
+        env:
+          GH_TOKEN: ${{ secrets.VCC_SOURCE_ARTIFACTS_TOKEN }}
+          SOURCE_REPO: ${{ steps.promotion.outputs.sourceRepository }}
+          SOURCE_RUN_ID: ${{ steps.promotion.outputs.sourceRunId }}
+          SOURCE_COMMIT: ${{ steps.promotion.outputs.sourceCommit }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${GH_TOKEN:-}" ]; then
+            echo "VCC_SOURCE_ARTIFACTS_TOKEN is not configured." >&2
+            exit 1
+          fi
+
+          run_json="$(gh api "repos/$SOURCE_REPO/actions/runs/$SOURCE_RUN_ID")"
+          test "$(jq -r '.conclusion' <<<"$run_json")" = "success"
+          test "$(jq -r '.name' <<<"$run_json")" = "VCC Windows CI"
+          test "$(jq -r '.head_sha' <<<"$run_json")" = "$SOURCE_COMMIT"
+
+          artifact_name="$(gh api "repos/$SOURCE_REPO/actions/runs/$SOURCE_RUN_ID/artifacts"             --jq '.artifacts[] | select(.expired == false and (.name | startswith("VCC-candidate-win-x64-"))) | .name'             | head -n 1)"
+          test -n "$artifact_name"
+
+          mkdir -p staging
+          gh run download "$SOURCE_RUN_ID" -R "$SOURCE_REPO" -n "$artifact_name" -D staging
+
+      - name: Verify release provenance and package bytes
+        env:
+          VERSION: ${{ steps.promotion.outputs.version }}
+          CHANNEL: ${{ steps.promotion.outputs.channel }}
+          SOURCE_COMMIT: ${{ steps.promotion.outputs.sourceCommit }}
+          SOURCE_RUN_ID: ${{ steps.promotion.outputs.sourceRunId }}
+        shell: python
+        run: |
+          import hashlib, json, os, pathlib, re
+          root = pathlib.Path("staging")
+          meta = json.loads((root / "vcc-release.json").read_text(encoding="utf-8-sig"))
+          ci = json.loads((root / "manifest.json").read_text(encoding="utf-8-sig"))
+          version = os.environ["VERSION"]
+          channel = os.environ["CHANNEL"]
+          commit = os.environ["SOURCE_COMMIT"]
+          run_id = os.environ["SOURCE_RUN_ID"]
+
+          if meta.get("schema") != 1 or meta.get("product") != "VPS Control Center":
+              raise SystemExit("Invalid vcc-release metadata")
+          if meta.get("version") != version or meta.get("channel") != channel:
+              raise SystemExit("Promotion version/channel mismatch")
+          if meta.get("sourceCommit") != commit or meta.get("architecture") != "win-x64":
+              raise SystemExit("Promotion source/architecture mismatch")
+          if ci.get("schema") != "vcc.ci-candidate/v2":
+              raise SystemExit("Unexpected CI manifest schema")
+          if ci.get("sourceCommit") != commit or str(ci.get("runId")) != run_id:
+              raise SystemExit("CI source/run provenance mismatch")
+          if not ci.get("automaticUpdateCompatible"):
+              raise SystemExit("Candidate is not automatic-update compatible")
+          checks = ci.get("checks") or {}
+          required = ("source", "build", "wpfResourceSmoke", "archiveIntegrity", "updateArchiveIntegrity")
+          if any(checks.get(k) != "PASS" for k in required):
+              raise SystemExit("Required CI gates are not PASS")
+          if checks.get("transportFailed") != 0 or checks.get("updateFailed") != 0:
+              raise SystemExit("CI tests contain failures")
+
+          asset = root / str(meta.get("packageAsset", ""))
+          if not asset.is_file():
+              raise SystemExit("Update asset is missing")
+          digest = hashlib.sha256(asset.read_bytes()).hexdigest()
+          if digest.lower() != str(meta.get("packageSha256", "")).lower():
+              raise SystemExit("Update asset SHA-256 mismatch")
+          if asset.stat().st_size != meta.get("packageSize"):
+              raise SystemExit("Update asset size mismatch")
+
+          runnable = list(root.glob("VCC-*-ci-*-win-x64.zip"))
+          if len(runnable) != 1:
+              raise SystemExit("Expected exactly one runnable CI package")
+          release_runnable = root / f"VCC-{version}-win-x64.zip"
+          runnable[0].rename(release_runnable)
+
+          print("PUBLIC PROMOTION GATE PASS")
+
+      - name: Create immutable public Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.promotion.outputs.version }}
+          CHANNEL: ${{ steps.promotion.outputs.channel }}
+          SOURCE_COMMIT: ${{ steps.promotion.outputs.sourceCommit }}
+          SOURCE_RUN_ID: ${{ steps.promotion.outputs.sourceRunId }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="v$VERSION"
+
+          if gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release $tag already exists. Immutable promotion refuses overwrite." >&2
+            exit 1
+          fi
+
+          notes="$(mktemp)"
+          {
+            echo "# VPS Control Center $VERSION"
+            echo
+            echo "Channel: $CHANNEL"
+            echo
+            echo "Source commit: `$SOURCE_COMMIT`"
+            echo "Private Windows CI run: `$SOURCE_RUN_ID`"
+            echo
+            echo "Binary-only release generated from a verified private CI artifact."
+          } > "$notes"
+
+          args=(release create "$tag"
+            "staging/VCC-Update-$VERSION-win-x64.zip"
+            "staging/vcc-release.json"
+            "staging/VCC-$VERSION-win-x64.zip"
+            "staging/SHA256SUMS.txt"
+            --repo "$GITHUB_REPOSITORY"
+            --title "VCC $VERSION"
+            --notes-file "$notes"
+            --verify-tag=false)
+
+          if [ "$CHANNEL" = "test" ]; then
+            args+=(--prerelease)
+          else
+            args+=(--latest)
+          fi
+
+          gh "${args[@]}"
