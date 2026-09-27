@@ -6,5 +6,5 @@
   "version": "0.0.0-placeholder",
   "channel": "test",
   "enabled": false,
-  "note": "Updated only after an exact private CI run passes and owner authorizes promotion."
+  "note": "Inert descriptor used to smoke-test the public promotion workflow; no release is authorized."
 }
