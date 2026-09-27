@@ -162,8 +162,8 @@ jobs:
             echo
             echo "Channel: $CHANNEL"
             echo
-            echo "Source commit: `$SOURCE_COMMIT`"
-            echo "Private Windows CI run: `$SOURCE_RUN_ID`"
+            printf 'Source commit: `%s`\n' "$SOURCE_COMMIT"
+            printf 'Private Windows CI run: `%s`\n' "$SOURCE_RUN_ID"
             echo
             echo "Binary-only release generated from a verified private CI artifact."
           } > "$notes"
