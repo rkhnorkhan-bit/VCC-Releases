@@ -1,11 +1,10 @@
 {
   "schema": 1,
   "sourceRepository": "rkhnorkhan-bit/VPS-Control-centre",
-  "sourceRunId": 36317451248,
-  "sourceCommit": "10d7d4408c5a4be39008092e4112d16335852660",
-  "version": "0.5.0-bootstrap.4",
+  "sourceRunId": 36319240749,
+  "sourceCommit": "bdfbc3e6e162f8bc59d53ba3d01a4980e073836a",
+  "version": "0.5.1-test.1",
   "channel": "test",
   "enabled": true,
-  "note": "Retry authorized Test promotion after fixing GitHub Actions output propagation; source run/commit/version unchanged.",
-  "promotionAttempt": 2
+  "note": "First user-visible in-app Test-channel update from installed 0.5.0-bootstrap.2. Includes safe legacy FULL-backup bridge."
 }
